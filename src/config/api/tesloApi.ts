@@ -13,7 +13,7 @@ export const API_URL =
 
 
 const tesloApi = axios.create({
-    baseURL: API_URL,
+    baseURL: API_URL, 
     headers: {
         'Content-type' : 'application/json',
     }

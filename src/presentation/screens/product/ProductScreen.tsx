@@ -1,160 +1,191 @@
-import { Button, ButtonGroup, Input, Layout, Text, useTheme } from "@ui-kitten/components";
-import { MainLayout } from "../../layouts/MainLayout";
-import { useQuery } from "@tanstack/react-query";
+import { useRef } from "react";
+import { ScrollView } from "react-native";
+import { Button, ButtonGroup, Input, Layout, useTheme } from "@ui-kitten/components";
+import { Formik } from "formik";
+
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { StackScreenProps } from "@react-navigation/stack";
 import { RootStackParams } from "../../navigation/StackNavigator";
-import { getProductById } from "../../../actions/products/get-product-by-id";
-import { useRef } from "react";
-import { FlatList, ScrollView } from "react-native";
-import { FadeInImage } from "../../components/ui/FadeInImage";
-import { Gender, Size } from "../../../domain/entities/product";
+
+import { getProductById, updateCreateProduct, } from "../../../actions/products";
+
+import { MainLayout } from "../../layouts/MainLayout";
+import { Product } from "../../../domain/entities/product";
 import { MyIcon } from "../../components/ui/MyIcon";
+import { ProductImages } from "../../components/products/ProductImages";
+import { genders, sizes } from "../../../config/constants/constants";
 
 
-const sizes: Size[] = [ Size.Xs, Size.S, Size.M, Size.L, Size.Xl, Size.Xxl ];
-const genders: Gender[] = [ Gender.Kid, Gender.Men, Gender.Women, Gender.Unisex ];
+interface Props extends StackScreenProps<RootStackParams, 'ProductScreen'> {};
 
 
-interface Props extends StackScreenProps<RootStackParams, 'ProductScreen'>{};
-
-
-export const ProductScreen = ({ route }:Props) => {
+export const ProductScreen = ({ route }: Props) => {
 
   const productIdRef = useRef(route.params.productId);
   const theme = useTheme();
+  const queryClient = useQueryClient();
 
-  const { data: product  } = useQuery({
-    queryKey: ['Product', productIdRef.current ],
-    queryFn: () => getProductById( productIdRef.current ),
+
+  const { data: product } = useQuery({
+    queryKey: ['Product', productIdRef.current],
+    queryFn: () => getProductById(productIdRef.current),
   });
 
-  
-  // useMutation
+  const mutation = useMutation({
+    mutationFn: (data: Product) => updateCreateProduct({ ...data, id: productIdRef.current }),
+    onSuccess(data: Product) {
+      productIdRef.current = data.id; // creacion
 
-  if ( !product ) {
-    return ( <MainLayout  title="Cargando..."/>)
+      queryClient.invalidateQueries({ queryKey: ['products', 'infinite'] });
+      queryClient.invalidateQueries({ queryKey: ['product', data.id] });
+
+    },
+  });
+
+
+
+
+  if (!product) {
+    return <MainLayout title="Cargando..." />;
   }
 
 
   return (
-    <MainLayout 
-      title={ product.title }
-      subTitle={ `Precio: ${ product.price }`}
+    <Formik
+      initialValues={product}
+      onSubmit={mutation.mutate}
     >
+      {
+        ({ handleChange, handleSubmit, values, errors, setFieldValue }) => (
 
-      <ScrollView style={{ flex: 1 }}>
+          <MainLayout
+            title={values.title}
+            subTitle={`Precio: ${values.price}`}
+          >
+            <ScrollView style={{ flex: 1 }}>
 
-        {/* Imágenes del producto */}
-          <Layout>
-            {/*  TODO: tener en consideración cuando no tenemos imágenes */}
-             <FlatList 
-                data={ product.images }
-                keyExtractor={ (item) => item }
-                horizontal
-                showsHorizontalScrollIndicator={ false }
-                renderItem={ ({ item }) => (
-                  <FadeInImage 
-                    uri={ item }
-                    style={{ width: 300, height: 300, marginHorizontal: 7 }}
-                  />
-                )}
-             />
-          </Layout>
+              {/* Imágenes del producto */}
+              <Layout style={{ marginVertical: 10, justifyContent: "center", alignItems: 'center' }}>
 
-                  {/*  Description  Formulario*/}
+                <ProductImages images={values.images} />
+
+              </Layout>
+
+              {/*  Formulario*/}
               <Layout style={{ marginHorizontal: 10 }}>
-                <Input 
+                <Input
                   label="Titulo"
-                  value={ product.title }
+                  value={values.title}
+                  onChangeText={handleChange('title')}
                   style={{ marginVertical: 5 }}
                 />
-                <Input 
+                <Input
                   label="Slug"
-                  value={ product.slug }
+                  value={values.slug}
+                  onChangeText={handleChange('slug')}
                   style={{ marginVertical: 5 }}
                 />
-                <Input 
+                <Input
                   label="Descripción"
-                  value={ product.description }
+                  value={values.description}
+                  onChangeText={handleChange('description')}
                   multiline
                   numberOfLines={5}
                   style={{ marginVertical: 5 }}
                 />
               </Layout>
 
-                {/* Precio e inventario */}
-              <Layout style={{ 
-                  marginVertical: 5, 
-                  marginHorizontal: 15, 
-                  flexDirection: 'row', 
-                  gap: 10 }}
+              {/* Precio e inventario */}
+              <Layout style={{
+                marginVertical: 5,
+                marginHorizontal: 15,
+                flexDirection: 'row',
+                gap: 10
+              }}
               >
-             
-                  <Input 
-                      label="Precio"
-                      value={ product.price.toString() }
-                      style={{  flex: 1 }}
-                  />
 
-                  <Input 
-                      label="Inventario"
-                      value={ product.stock.toString() }
-                      style={{  flex: 1 }}
-                  />
+                <Input
+                  label="Precio"
+                  value={values.price.toString()}
+                  onChangeText={handleChange('price')}
+                  style={{ flex: 1 }}
+                  keyboardType="numeric"
+                />
+
+                <Input
+                  label="Inventario"
+                  value={values.stock.toString()}
+                  onChangeText={handleChange('stock')}
+                  style={{ flex: 1 }}
+                  keyboardType="numeric"
+                />
               </Layout>
 
               {/* Selectores */}
-                <ButtonGroup 
-                    style={{ margin: 2, marginTop: 20, marginHorizontal: 15}}
-                    size="small"
-                    appearance="outline"
-                >
-                  {
-                    sizes.map((size) => (
-                      <Button 
-                          key={size}
-                          style={{ 
-                            flex: 1,
-                            backgroundColor: true ? theme['color-primary-200'] : undefined 
-                          }}
-                      >{size}</Button>
-                    ))
-                  }
-                </ButtonGroup>
+              <ButtonGroup
+                style={{ margin: 2, marginTop: 20, marginHorizontal: 15 }}
+                size="small"
+                appearance="outline"
+              >
+                {
+                  sizes.map((size) => (
+                    <Button
+                      onPress={() => setFieldValue(
+                        'sizes',
+                        values.sizes.includes(size)
+                          ? values.sizes.filter(s => s != size)
+                          : [...values.sizes, size]
+                      )}
+                      key={size}
+                      style={{
+                        flex: 1,
+                        backgroundColor: values.sizes.includes(size)
+                          ? theme['color-primary-200']
+                          : undefined,
+                      }}
+                    >{size}</Button>
+                  ))
+                }
+              </ButtonGroup>
 
-                <ButtonGroup 
-                    style={{ margin: 2, marginTop: 20, marginHorizontal: 15}}
-                    size="small"
-                    appearance="outline"
-                >
-                  {
-                    genders.map((gender) => (
-                      <Button 
-                          key={gender}
-                          style={{ 
-                            flex: 1,
-                            backgroundColor: true ? theme['color-primary-200'] : undefined 
-                          }}
-                      >{gender}</Button>
-                    ))
-                  }
-                </ButtonGroup>
+              <ButtonGroup
+                style={{ margin: 2, marginTop: 20, marginHorizontal: 15 }}
+                size="small"
+                appearance="outline"
+              >
+                {
+                  genders.map((gender) => (
+                    <Button
+                      onPress={() => setFieldValue('gender', gender)}
+                      key={gender}
+                      style={{
+                        flex: 1,
+                        backgroundColor: values.gender.startsWith('gender')
+                          ? theme['color-primary-200']
+                          : undefined,
+                      }}
+                    >{gender}</Button>
+                  ))
+                }
+              </ButtonGroup>
 
-                {/* Botón de guardar */}
-                  <Button
-                    accessoryLeft={ <MyIcon  name="save-outline" white />}
-                    onPress={ () => console.log('Guardar')}
-                    style={{ margin: 15,}}
-                  >
-                    Guardar
-                  </Button>
+              {/* Botón de guardar */}
+              <Button
+                accessoryLeft={<MyIcon name="save-outline" white />}
+                onPress={() => handleSubmit()}
+                disabled={mutation.isPending}
+                style={{ margin: 15, }}
+              >
+                Guardar
+              </Button>
 
-                  <Text>{ JSON.stringify(product, null, 2)}</Text> 
+              <Layout style={{ height: 200 }} />
+            </ScrollView>
+          </MainLayout>
+        )
+      }
 
 
-              <Layout  style={{ height: 200 }}/>
-      </ScrollView>
-    </MainLayout>
-    
-  )
-}
+    </Formik>
+  );
+};

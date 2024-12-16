@@ -1,9 +1,10 @@
-import { Layout, List, Text } from "@ui-kitten/components";
+import { useState } from "react";
+import { RefreshControl } from "react-native-gesture-handler";
+import { Layout, List } from "@ui-kitten/components";
+import { useQueryClient } from "@tanstack/react-query";
+
 import { Product } from "../../../domain/entities/product";
 import { ProductCard } from "./ProductCard";
-import { useState } from "react";
-import { resolver } from "../../../../metro.config";
-import { RefreshControl } from "react-native-gesture-handler";
 
 interface Props {
     products: Product[];
@@ -13,13 +14,14 @@ interface Props {
 
 export const ProductList = ({ products, fetchNextPage }:Props) => {
 
+  const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
 
   const onPullToRefresh = async() => {
     setIsRefreshing(true);
-    // Sleep 2 segundos
-    await new Promise(resolver => setTimeout(resolver, 1500));
+    await new Promise(resolver => setTimeout(resolver, 200));
+    queryClient.invalidateQueries({ queryKey: ['products', 'infinite'] });
 
     setIsRefreshing( false );
   }
