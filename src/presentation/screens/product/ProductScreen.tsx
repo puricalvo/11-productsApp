@@ -14,6 +14,7 @@ import { Product } from "../../../domain/entities/product";
 import { MyIcon } from "../../components/ui/MyIcon";
 import { ProductImages } from "../../components/products/ProductImages";
 import { genders, sizes } from "../../../config/constants/constants";
+import { CameraAdapter } from "../../../config/adapters/camera-adapter";
 
 
 interface Props extends StackScreenProps<RootStackParams, 'ProductScreen'> {};
@@ -61,6 +62,17 @@ export const ProductScreen = ({ route }: Props) => {
           <MainLayout
             title={values.title}
             subTitle={`Precio: ${values.price}`}
+            rightAction={ async() => {
+
+              const photos = await CameraAdapter.getPicturesFromLibrary();
+              setFieldValue('images', [ ...values.images, ...photos]);
+              
+              /* takePicture()() funcion para tomar imagenes con la camara*/
+              /* const tomarPhotos = await CameraAdapter.takePicture();
+              setFieldValue('images', [ ...values.images, ...tomarPhotos]);
+ */
+            }}
+            rightActionIcon="image-outline"
           >
             <ScrollView style={{ flex: 1 }}>
 
